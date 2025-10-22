@@ -4,6 +4,7 @@
 
 let empleados = [];
 let vacaciones = [];
+let coberturas = {}; // { vacacionId: empleadoIdQueReemplaza }
 let editandoEmpleadoId = null;
 let editandoVacacionId = null;
 
@@ -19,6 +20,39 @@ function obtenerNombreCompleto(empleado) {
     return `${empleado.nombre} ${empleado.apellido}`;
 }
 
+function calcularDiasUsados(empleadoId) {
+    return vacaciones
+        .filter(v => v.empleadoId === empleadoId && v.fechaInicio)
+        .reduce((total, v) => total + v.dias, 0);
+}
+
+function calcularDiasRestantes(empleadoId) {
+    const empleado = empleados.find(e => e.id === empleadoId);
+    if (!empleado) return 0;
+    const diasUsados = calcularDiasUsados(empleadoId);
+    return (empleado.diasDisponibles || 30) - diasUsados;
+}
+
+function calcularFinesSemana(empleado, fechaInicio, dias) {
+    const finesSemana = [];
+    const fecha = new Date(fechaInicio);
+
+    for (let i = 0; i < dias; i++) {
+        const diaSemana = fecha.getDay();
+        const fechaStr = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}-${fecha.getDate().toString().padStart(2, '0')}`;
+
+        // Si es sábado (6) y trabaja sábados, o domingo (0) y trabaja domingos
+        if ((diaSemana === 6 && empleado.trabajaSabado) || (diaSemana === 0 && empleado.trabajaDomingo)) {
+            const nombreDia = diaSemana === 6 ? 'Sábado' : 'Domingo';
+            finesSemana.push({ fecha: fechaStr, dia: nombreDia });
+        }
+
+        fecha.setDate(fecha.getDate() + 1);
+    }
+
+    return finesSemana;
+}
+
 // ===========================
 // PERSISTENCIA DE DATOS
 // ===========================
@@ -27,11 +61,23 @@ function cargarDatos() {
     const datosGuardados = localStorage.getItem('empleados');
     if (datosGuardados) {
         empleados = JSON.parse(datosGuardados);
+        // Migrar empleados antiguos que no tienen los nuevos campos
+        empleados = empleados.map(emp => ({
+            ...emp,
+            diasDisponibles: emp.diasDisponibles !== undefined ? emp.diasDisponibles : 30,
+            trabajaSabado: emp.trabajaSabado || false,
+            trabajaDomingo: emp.trabajaDomingo || false
+        }));
     }
 
     const vacacionesGuardadas = localStorage.getItem('vacaciones');
     if (vacacionesGuardadas) {
         vacaciones = JSON.parse(vacacionesGuardadas);
+    }
+
+    const coberturasGuardadas = localStorage.getItem('coberturas');
+    if (coberturasGuardadas) {
+        coberturas = JSON.parse(coberturasGuardadas);
     }
 
     // Cargar preferencia de modo oscuro
@@ -48,6 +94,10 @@ function guardarEmpleados() {
 
 function guardarVacaciones() {
     localStorage.setItem('vacaciones', JSON.stringify(vacaciones));
+}
+
+function guardarCoberturas() {
+    localStorage.setItem('coberturas', JSON.stringify(coberturas));
 }
 
 // ===========================
@@ -135,7 +185,9 @@ function inicializarModuloEmpleados() {
 function guardarEmpleado() {
     const nombre = document.getElementById('nombre').value.trim();
     const apellido = document.getElementById('apellido').value.trim();
-    const departamento = document.getElementById('departamento').value.trim();
+    const diasDisponibles = parseInt(document.getElementById('diasDisponibles').value);
+    const trabajaSabado = document.getElementById('trabajaSabado').checked;
+    const trabajaDomingo = document.getElementById('trabajaDomingo').checked;
     const color = document.getElementById('color').value;
 
     if (editandoEmpleadoId) {
@@ -144,7 +196,9 @@ function guardarEmpleado() {
         if (empleado) {
             empleado.nombre = nombre;
             empleado.apellido = apellido;
-            empleado.departamento = departamento;
+            empleado.diasDisponibles = diasDisponibles;
+            empleado.trabajaSabado = trabajaSabado;
+            empleado.trabajaDomingo = trabajaDomingo;
             empleado.color = color;
         }
         editandoEmpleadoId = null;
@@ -154,7 +208,9 @@ function guardarEmpleado() {
             id: generarId(),
             nombre,
             apellido,
-            departamento,
+            diasDisponibles,
+            trabajaSabado,
+            trabajaDomingo,
             color
         };
         empleados.push(nuevoEmpleado);
@@ -172,7 +228,9 @@ function editarEmpleado(id) {
     document.getElementById('empleadoId').value = empleado.id;
     document.getElementById('nombre').value = empleado.nombre;
     document.getElementById('apellido').value = empleado.apellido;
-    document.getElementById('departamento').value = empleado.departamento;
+    document.getElementById('diasDisponibles').value = empleado.diasDisponibles || 30;
+    document.getElementById('trabajaSabado').checked = empleado.trabajaSabado || false;
+    document.getElementById('trabajaDomingo').checked = empleado.trabajaDomingo || false;
     document.getElementById('color').value = empleado.color;
 
     // Actualizar previsualización de color
@@ -201,6 +259,9 @@ function eliminarEmpleado(id) {
 function limpiarFormulario() {
     document.getElementById('formEmpleado').reset();
     document.getElementById('empleadoId').value = '';
+    document.getElementById('diasDisponibles').value = 30;
+    document.getElementById('trabajaSabado').checked = false;
+    document.getElementById('trabajaDomingo').checked = false;
     const colorInicial = '#3498db';
     document.getElementById('color').value = colorInicial;
     document.getElementById('colorPreview').style.background = colorInicial;
@@ -216,21 +277,31 @@ function renderizarListaEmpleados() {
         return;
     }
 
-    lista.innerHTML = empleados.map(empleado => `
-        <div class="empleado-card">
-            <div class="empleado-info">
-                <div class="empleado-color" style="background-color: ${empleado.color}"></div>
-                <div class="empleado-datos">
-                    <h4>${obtenerNombreCompleto(empleado)}</h4>
-                    <p>${empleado.departamento || 'Sin departamento'}</p>
+    lista.innerHTML = empleados.map(empleado => {
+        const diasUsados = calcularDiasUsados(empleado.id);
+        const diasRestantes = (empleado.diasDisponibles || 30) - diasUsados;
+        const trabajaDias = [];
+        if (empleado.trabajaSabado) trabajaDias.push('Sáb');
+        if (empleado.trabajaDomingo) trabajaDias.push('Dom');
+        const trabajaTexto = trabajaDias.length > 0 ? `Trabaja: ${trabajaDias.join(', ')}` : 'No trabaja fines de semana';
+
+        return `
+            <div class="empleado-card">
+                <div class="empleado-info">
+                    <div class="empleado-color" style="background-color: ${empleado.color}"></div>
+                    <div class="empleado-datos">
+                        <h4>${obtenerNombreCompleto(empleado)}</h4>
+                        <p>${empleado.diasDisponibles || 30} días disponibles | ${diasRestantes} días restantes</p>
+                        <p><small>${trabajaTexto}</small></p>
+                    </div>
+                </div>
+                <div class="empleado-acciones">
+                    <button class="btn btn-edit" onclick="editarEmpleado('${empleado.id}')">Editar</button>
+                    <button class="btn btn-danger" onclick="eliminarEmpleado('${empleado.id}')">Eliminar</button>
                 </div>
             </div>
-            <div class="empleado-acciones">
-                <button class="btn btn-edit" onclick="editarEmpleado('${empleado.id}')">Editar</button>
-                <button class="btn btn-danger" onclick="eliminarEmpleado('${empleado.id}')">Eliminar</button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
 // ===========================
@@ -263,9 +334,39 @@ function actualizarSelectEmpleados() {
     empleados.forEach(empleado => {
         const option = document.createElement('option');
         option.value = empleado.id;
-        option.textContent = obtenerNombreCompleto(empleado);
+        const diasRestantes = calcularDiasRestantes(empleado.id);
+        option.textContent = `${obtenerNombreCompleto(empleado)} (${diasRestantes} días disponibles)`;
         select.appendChild(option);
     });
+
+    // Evento para mostrar días restantes al seleccionar
+    select.addEventListener('change', mostrarDiasRestantes);
+}
+
+function mostrarDiasRestantes() {
+    const select = document.getElementById('selectEmpleado');
+    const diasRestantesDiv = document.getElementById('diasRestantes');
+    const diasRestantesValor = document.getElementById('diasRestantesValor');
+
+    const empleadoId = select.value;
+
+    if (!empleadoId) {
+        diasRestantesDiv.style.display = 'none';
+        return;
+    }
+
+    const diasRestantes = calcularDiasRestantes(empleadoId);
+    diasRestantesValor.textContent = diasRestantes;
+
+    // Aplicar clases de advertencia
+    diasRestantesDiv.classList.remove('warning', 'danger');
+    if (diasRestantes <= 0) {
+        diasRestantesDiv.classList.add('danger');
+    } else if (diasRestantes <= 5) {
+        diasRestantesDiv.classList.add('warning');
+    }
+
+    diasRestantesDiv.style.display = 'block';
 }
 
 function mostrarCalendario() {
@@ -294,6 +395,7 @@ function mostrarCalendario() {
 
     // Renderizar bloques de vacaciones existentes
     renderizarBloquesVacaciones();
+    renderizarCoberturasFinSemana();
 }
 
 function crearCalendarioMes(anio, mes) {
@@ -376,6 +478,13 @@ function crearBloqueVacaciones() {
         return;
     }
 
+    // Validar días disponibles
+    const diasRestantes = calcularDiasRestantes(empleadoId);
+    if (diasVacaciones > diasRestantes) {
+        alert(`El empleado solo tiene ${diasRestantes} días disponibles. No puede asignar ${diasVacaciones} días.`);
+        return;
+    }
+
     const empleado = empleados.find(e => e.id === empleadoId);
     if (!empleado) return;
 
@@ -390,8 +499,9 @@ function crearBloqueVacaciones() {
     vacaciones.push(vacacion);
     guardarVacaciones();
 
-    // Actualizar lista de bloques pendientes
+    // Actualizar lista de bloques pendientes y días restantes
     renderizarBloquesPendientes();
+    mostrarDiasRestantes();
 
     // Limpiar campo de días
     document.getElementById('diasVacaciones').value = 15;
@@ -608,6 +718,23 @@ function abrirModalEdicion(vacacionId) {
     // Actualizar contenido del modal
     document.getElementById('modalEmpleadoNombre').textContent = obtenerNombreCompleto(empleado);
     document.getElementById('modalDias').value = vacacion.dias;
+    document.getElementById('modalFechaInicio').value = vacacion.fechaInicio || '';
+
+    // Mostrar fines de semana si hay fecha de inicio
+    if (vacacion.fechaInicio) {
+        const finesSemana = calcularFinesSemana(empleado, vacacion.fechaInicio, vacacion.dias);
+        if (finesSemana.length > 0) {
+            const detalleDiv = document.getElementById('modalFinesSemanaDetalle');
+            detalleDiv.innerHTML = finesSemana.map(fs =>
+                `<span style="display: block;">${fs.dia} ${fs.fecha}</span>`
+            ).join('');
+            document.getElementById('modalFinesSemana').style.display = 'block';
+        } else {
+            document.getElementById('modalFinesSemana').style.display = 'none';
+        }
+    } else {
+        document.getElementById('modalFinesSemana').style.display = 'none';
+    }
 
     // Mostrar modal
     const modal = document.getElementById('modalEditarBloque');
@@ -627,19 +754,38 @@ function guardarEdicionBloque() {
     if (!vacacion) return;
 
     const nuevosDias = parseInt(document.getElementById('modalDias').value);
+    const nuevaFechaInicio = document.getElementById('modalFechaInicio').value;
 
     if (!nuevosDias || nuevosDias < 1) {
         alert('Por favor, ingrese una cantidad válida de días');
         return;
     }
 
+    // Validar días disponibles si se aumenta
+    const empleado = empleados.find(e => e.id === vacacion.empleadoId);
+    if (empleado) {
+        const diasUsadosSinEste = vacaciones
+            .filter(v => v.empleadoId === empleado.id && v.id !== vacacion.id && v.fechaInicio)
+            .reduce((total, v) => total + v.dias, 0);
+        const diasDisponibles = (empleado.diasDisponibles || 30) - diasUsadosSinEste;
+
+        if (nuevosDias > diasDisponibles) {
+            alert(`Este empleado solo tiene ${diasDisponibles} días disponibles.`);
+            return;
+        }
+    }
+
     vacacion.dias = nuevosDias;
+    if (nuevaFechaInicio) {
+        vacacion.fechaInicio = nuevaFechaInicio;
+    }
     guardarVacaciones();
 
     // Actualizar visualización
     renderizarBloquesPendientes();
     if (document.querySelector('.calendarios-grid')) {
         renderizarBloquesVacaciones();
+        renderizarCoberturasFinSemana();
     }
 
     cerrarModal();
@@ -721,10 +867,37 @@ function manejarDrop(e) {
         e.preventDefault();
     }
 
-    const celdaDestino = e.target.closest('.dia-cell');
+    // Intentar encontrar la celda destino, ya sea directamente o a través de un bloque
+    let celdaDestino = e.target.closest('.dia-cell');
+
+    // Si no encontramos celda, podría ser que soltamos sobre un bloque
+    if (!celdaDestino) {
+        const bloqueDestino = e.target.closest('.bloque-vacaciones');
+        if (bloqueDestino) {
+            // Encontrar la celda padre del bloque
+            const diasGrid = bloqueDestino.parentElement;
+            if (diasGrid && diasGrid.classList.contains('dias-grid')) {
+                // Obtener todas las celdas y encontrar la que está debajo del mouse
+                const rect = bloqueDestino.getBoundingClientRect();
+                const punto = document.elementFromPoint(e.clientX, e.clientY);
+                celdaDestino = punto ? punto.closest('.dia-cell') : null;
+
+                // Si aún no encontramos, usar la posición del bloque para deducir la celda
+                if (!celdaDestino) {
+                    const bloqueVacacionOriginal = vacaciones.find(v => v.id === bloqueDestino.dataset.vacacionId);
+                    if (bloqueVacacionOriginal && bloqueVacacionOriginal.fechaInicio) {
+                        const celdaConFecha = diasGrid.querySelector(`[data-fecha="${bloqueVacacionOriginal.fechaInicio}"]`);
+                        celdaDestino = celdaConFecha;
+                    }
+                }
+            }
+        }
+    }
+
     if (!celdaDestino || !draggedVacacion) return false;
 
     const fechaDestino = celdaDestino.dataset.fecha;
+    if (!fechaDestino) return false;
 
     // Actualizar la fecha de inicio de la vacación
     draggedVacacion.fechaInicio = fechaDestino;
@@ -736,11 +909,95 @@ function manejarDrop(e) {
     // Actualizar visualización completa
     renderizarBloquesPendientes();
     renderizarBloquesVacaciones();
+    renderizarCoberturasFinSemana();
 
     draggedElement = null;
     draggedVacacion = null;
 
     return false;
+}
+
+// ===========================
+// COBERTURA DE FINES DE SEMANA
+// ===========================
+
+function renderizarCoberturasFinSemana() {
+    const coberturaDiv = document.getElementById('coberturaFinesSemana');
+    const listaCoberturas = document.getElementById('listaCoberturas');
+
+    // Obtener todas las vacaciones con fines de semana
+    const vacacionesConFinesSemana = vacaciones
+        .filter(v => v.fechaInicio)
+        .map(v => {
+            const empleado = empleados.find(e => e.id === v.empleadoId);
+            if (!empleado) return null;
+
+            const finesSemana = calcularFinesSemana(empleado, v.fechaInicio, v.dias);
+            if (finesSemana.length === 0) return null;
+
+            return { vacacion: v, empleado, finesSemana };
+        })
+        .filter(item => item !== null);
+
+    if (vacacionesConFinesSemana.length === 0) {
+        coberturaDiv.style.display = 'none';
+        return;
+    }
+
+    coberturaDiv.style.display = 'block';
+    listaCoberturas.innerHTML = '';
+
+    vacacionesConFinesSemana.forEach(({ vacacion, empleado, finesSemana }) => {
+        const coberturaItem = document.createElement('div');
+        coberturaItem.className = 'cobertura-item';
+
+        const empleadoDiv = document.createElement('div');
+        empleadoDiv.className = 'cobertura-empleado';
+        empleadoDiv.innerHTML = `
+            <div class="cobertura-color" style="background-color: ${empleado.color}"></div>
+            <div class="cobertura-info">
+                <strong>${obtenerNombreCompleto(empleado)}</strong>
+                <small>${finesSemana.length} fin(es) de semana</small>
+            </div>
+        `;
+
+        const finesSemanaDiv = document.createElement('div');
+        finesSemanaDiv.className = 'cobertura-info';
+        finesSemanaDiv.innerHTML = `
+            <strong>Fechas:</strong>
+            <small>${finesSemana.map(fs => `${fs.dia} ${fs.fecha}`).join(', ')}</small>
+        `;
+
+        const selectDiv = document.createElement('div');
+        selectDiv.className = 'cobertura-select';
+        selectDiv.innerHTML = `
+            <label>Reemplazo:</label>
+            <select class="cobertura-empleado-select" data-vacacion-id="${vacacion.id}">
+                <option value="">-- Sin asignar --</option>
+                ${empleados
+                    .filter(e => e.id !== empleado.id)
+                    .map(e => `<option value="${e.id}" ${coberturas[vacacion.id] === e.id ? 'selected' : ''}>${obtenerNombreCompleto(e)}</option>`)
+                    .join('')}
+            </select>
+        `;
+
+        coberturaItem.appendChild(empleadoDiv);
+        coberturaItem.appendChild(finesSemanaDiv);
+        coberturaItem.appendChild(selectDiv);
+        listaCoberturas.appendChild(coberturaItem);
+
+        // Evento de cambio en el select
+        const select = selectDiv.querySelector('select');
+        select.addEventListener('change', (e) => {
+            const empleadoReemplazoId = e.target.value;
+            if (empleadoReemplazoId) {
+                coberturas[vacacion.id] = empleadoReemplazoId;
+            } else {
+                delete coberturas[vacacion.id];
+            }
+            guardarCoberturas();
+        });
+    });
 }
 
 // ===========================

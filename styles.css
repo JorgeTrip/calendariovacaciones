@@ -408,6 +408,45 @@ main {
     font-style: italic;
 }
 
+.checkbox-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 10px;
+    background: var(--container-bg);
+    border-radius: 5px;
+}
+
+.dias-restantes {
+    margin-top: 10px;
+    padding: 12px 16px;
+    background: linear-gradient(135deg, #667eea15, #764ba215);
+    border-left: 4px solid var(--primary-color);
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.dias-restantes .label {
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.dias-restantes .valor {
+    font-size: 1.5rem;
+    font-weight: bold;
+    color: var(--primary-color);
+}
+
+.dias-restantes.warning .valor {
+    color: #ff9800;
+}
+
+.dias-restantes.danger .valor {
+    color: #f44336;
+}
+
 /* Calendario */
 .calendario-container {
     background: var(--bg-section);
@@ -738,4 +777,106 @@ body.dark-mode .info-box {
     color: var(--primary-color);
     margin: 0;
     padding: 10px 0;
+}
+
+.info-vacaciones {
+    background: var(--bg-section);
+    padding: 15px;
+    border-radius: 6px;
+    margin: 15px 0;
+    border-left: 3px solid var(--primary-color);
+}
+
+.info-vacaciones p {
+    margin: 5px 0;
+    color: var(--text-primary);
+}
+
+.info-vacaciones strong {
+    color: var(--primary-color);
+}
+
+/* Cobertura de fines de semana */
+.cobertura-fines-semana {
+    background: var(--bg-section);
+    padding: 25px;
+    border-radius: 8px;
+    margin-top: 30px;
+    transition: background 0.3s ease;
+}
+
+.cobertura-fines-semana h3 {
+    margin-bottom: 15px;
+    color: var(--primary-color);
+}
+
+#listaCoberturas {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.cobertura-item {
+    background: var(--container-bg);
+    padding: 15px;
+    border-radius: 6px;
+    border-left: 4px solid var(--primary-color);
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    gap: 15px;
+    align-items: center;
+}
+
+.cobertura-empleado {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.cobertura-color {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 2px solid var(--border-input);
+}
+
+.cobertura-info strong {
+    color: var(--text-primary);
+    display: block;
+    margin-bottom: 3px;
+}
+
+.cobertura-info small {
+    color: var(--text-secondary);
+}
+
+.cobertura-select {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.cobertura-select label {
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+}
+
+.cobertura-select select {
+    padding: 8px;
+    border: 2px solid var(--border-input);
+    border-radius: 5px;
+    background: var(--container-bg);
+    color: var(--text-primary);
+    font-size: 0.95rem;
+}
+
+.btn-guardar-cobertura {
+    padding: 8px 16px;
+    font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .cobertura-item {
+        grid-template-columns: 1fr;
+    }
 }
