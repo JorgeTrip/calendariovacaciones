@@ -634,6 +634,44 @@ body.dark-mode .dia-cell.hoy {
     gap: 10px;
 }
 
+.bloque-pendiente-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.bloque-pendiente-container:hover .btn-eliminar-bloque {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.btn-eliminar-bloque {
+    position: absolute;
+    right: -5px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #ff4444;
+    border: 2px solid white;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: all 0.2s ease;
+    font-size: 0.9rem;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.btn-eliminar-bloque:hover {
+    background: #dd0000;
+    transform: translateY(-50%) scale(1.1);
+}
+
 .bloque-pendiente-item {
     display: inline-flex;
     align-items: center;
