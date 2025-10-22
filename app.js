@@ -361,8 +361,8 @@ function mostrarDiasRestantes() {
     const diasRestantes = calcularDiasRestantes(empleadoId);
     diasRestantesValor.textContent = diasRestantes;
 
-    // Actualizar el campo de días con los días disponibles
-    inputDiasVacaciones.value = Math.max(1, diasRestantes);
+    // Actualizar el campo de días con los días disponibles (permitir 0)
+    inputDiasVacaciones.value = diasRestantes >= 0 ? diasRestantes : 0;
     inputDiasVacaciones.max = diasRestantes;
 
     // Aplicar clases de advertencia
@@ -682,27 +682,12 @@ function obtenerBloquesPorFecha(fecha, vacacionIdExcluir = null) {
 }
 
 function posicionarBloqueEnCalendario(bloqueOriginal, vacacion) {
-    const fechaStr = vacacion.fechaInicio;
-
-    // Buscar la celda de inicio
-    const celdaInicio = document.querySelector(`.dia-cell[data-fecha="${fechaStr}"]`);
-    if (!celdaInicio) return;
-
-    // Obtener el grid de días
-    const diasGrid = celdaInicio.parentElement;
-    const todasLasCeldas = Array.from(diasGrid.querySelectorAll('.dia-cell'));
-    const indiceCeldaInicio = todasLasCeldas.indexOf(celdaInicio);
-
-    if (indiceCeldaInicio === -1) return;
-
-    // Obtener dimensiones de celda
-    const celdaRect = celdaInicio.getBoundingClientRect();
-    const alturaCelda = celdaRect.height;
+    const fechaInicio = new Date(vacacion.fechaInicio);
+    let diasRestantes = vacacion.dias;
 
     // Calcular cuántos bloques máximo hay en algún día del rango
     const fechasOcupadas = calcularBloquesPorDia(vacacion.fechaInicio, vacacion.dias);
     let maxBloquesPorDia = 1;
-    let posicionEnDia = 0;
 
     fechasOcupadas.forEach(fecha => {
         const bloquesEnFecha = obtenerBloquesPorFecha(fecha, vacacion.id);
@@ -711,55 +696,78 @@ function posicionarBloqueEnCalendario(bloqueOriginal, vacacion) {
 
     // Determinar posición vertical de este bloque
     const bloquesPrimeraFecha = obtenerBloquesPorFecha(fechasOcupadas[0], vacacion.id);
-    posicionEnDia = bloquesPrimeraFecha.length;
+    const posicionEnDia = bloquesPrimeraFecha.length;
 
-    // Calcular altura del bloque (dividida entre bloques superpuestos)
-    const alturaBloque = (alturaCelda - 10) / maxBloquesPorDia;
-    const offsetVertical = posicionEnDia * alturaBloque;
+    // Procesar día por día
+    let fechaActual = new Date(fechaInicio);
+    let diasProcesados = 0;
 
-    let diasRestantes = vacacion.dias;
-    let indiceCeldaActual = indiceCeldaInicio;
-    let filaActual = Math.floor(indiceCeldaInicio / 7);
+    while (diasProcesados < vacacion.dias) {
+        const fechaStr = `${fechaActual.getFullYear()}-${(fechaActual.getMonth() + 1).toString().padStart(2, '0')}-${fechaActual.getDate().toString().padStart(2, '0')}`;
 
-    // Crear bloques para cada fila que necesite el período de vacaciones
-    while (diasRestantes > 0 && indiceCeldaActual < todasLasCeldas.length) {
-        const columnaActual = indiceCeldaActual % 7;
-        const diasEnEstaFila = Math.min(diasRestantes, 7 - columnaActual);
+        // Buscar la celda para esta fecha
+        const celda = document.querySelector(`.dia-cell[data-fecha="${fechaStr}"]`);
 
-        // Crear un bloque para esta fila
-        const bloqueSegmento = bloqueOriginal.cloneNode(true);
-        bloqueSegmento.dataset.vacacionId = vacacion.id;
+        if (celda) {
+            const diasGrid = celda.parentElement;
+            const todasLasCeldas = Array.from(diasGrid.querySelectorAll('.dia-cell'));
+            const indiceCelda = todasLasCeldas.indexOf(celda);
 
-        // Posicionar el bloque
-        bloqueSegmento.style.position = 'absolute';
-        bloqueSegmento.style.left = `${columnaActual * (100 / 7)}%`;
-        bloqueSegmento.style.top = `${filaActual * (alturaCelda + 5) + offsetVertical}px`;
-        bloqueSegmento.style.width = `calc(${diasEnEstaFila * (100 / 7)}% - 5px)`;
-        bloqueSegmento.style.height = `${alturaBloque}px`;
+            if (indiceCelda !== -1) {
+                // Calcular cuántos días consecutivos podemos poner en este grid
+                const columnaActual = indiceCelda % 7;
+                const diasRestantesEnGrid = Math.min(
+                    vacacion.dias - diasProcesados,
+                    todasLasCeldas.length - indiceCelda
+                );
 
-        // Hacer el bloque arrastrable y clickeable
-        bloqueSegmento.draggable = true;
-        bloqueSegmento.addEventListener('dragstart', manejarDragStart);
-        bloqueSegmento.addEventListener('dragend', manejarDragEnd);
-        bloqueSegmento.addEventListener('click', (e) => {
-            e.stopPropagation();
-            abrirModalEdicion(vacacion.id);
-        });
+                // Calcular cuántos días hasta el final de la semana
+                const diasHastaFinSemana = 7 - columnaActual;
+                const diasEnEsteSegmento = Math.min(diasRestantesEnGrid, diasHastaFinSemana);
 
-        diasGrid.appendChild(bloqueSegmento);
+                // Obtener dimensiones de celda
+                const celdaRect = celda.getBoundingClientRect();
+                const alturaCelda = celdaRect.height;
 
-        // Actualizar para la siguiente fila
-        diasRestantes -= diasEnEstaFila;
-        indiceCeldaActual += diasEnEstaFila;
+                // Calcular altura del bloque
+                const alturaBloque = (alturaCelda - 10) / maxBloquesPorDia;
+                const offsetVertical = posicionEnDia * alturaBloque;
 
-        // Si llegamos al final de la semana, pasar a la siguiente fila
-        if (indiceCeldaActual % 7 !== 0 && diasRestantes > 0) {
-            indiceCeldaActual = Math.ceil(indiceCeldaActual / 7) * 7;
+                // Calcular fila
+                const filaActual = Math.floor(indiceCelda / 7);
+
+                // Crear segmento de bloque
+                const bloqueSegmento = bloqueOriginal.cloneNode(true);
+                bloqueSegmento.dataset.vacacionId = vacacion.id;
+
+                bloqueSegmento.style.position = 'absolute';
+                bloqueSegmento.style.left = `${columnaActual * (100 / 7)}%`;
+                bloqueSegmento.style.top = `${filaActual * (alturaCelda + 5) + offsetVertical}px`;
+                bloqueSegmento.style.width = `calc(${diasEnEsteSegmento * (100 / 7)}% - 5px)`;
+                bloqueSegmento.style.height = `${alturaBloque}px`;
+
+                bloqueSegmento.draggable = true;
+                bloqueSegmento.addEventListener('dragstart', manejarDragStart);
+                bloqueSegmento.addEventListener('dragend', manejarDragEnd);
+                bloqueSegmento.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    abrirModalEdicion(vacacion.id);
+                });
+
+                diasGrid.appendChild(bloqueSegmento);
+
+                diasProcesados += diasEnEsteSegmento;
+            }
         }
-        filaActual = Math.floor(indiceCeldaActual / 7);
+
+        // Avanzar al siguiente día
+        fechaActual.setDate(fechaActual.getDate() + 1);
+
+        // Seguridad: evitar bucle infinito
+        if (diasProcesados >= vacacion.dias) break;
     }
 
-    // Remover el bloque original ya que creamos los segmentos
+    // Remover el bloque original
     if (bloqueOriginal.parentElement && bloqueOriginal.classList.contains('bloque-temporal')) {
         bloqueOriginal.remove();
     }
@@ -1075,6 +1083,7 @@ function renderizarCoberturasFinSemana() {
             <label>Reemplazo:</label>
             <select class="cobertura-empleado-select" data-vacacion-id="${vacacion.id}">
                 <option value="">-- Sin asignar --</option>
+                <option value="REFUERZO" ${coberturas[vacacion.id] === 'REFUERZO' ? 'selected' : ''}>Pedir refuerzo</option>
                 ${empleados
                     .filter(e => e.id !== empleado.id)
                     .map(e => `<option value="${e.id}" ${coberturas[vacacion.id] === e.id ? 'selected' : ''}>${obtenerNombreCompleto(e)}</option>`)
@@ -1102,6 +1111,120 @@ function renderizarCoberturasFinSemana() {
 }
 
 // ===========================
+// IMPORTAR/EXPORTAR DATOS
+// ===========================
+
+function exportarDatos() {
+    const datos = {
+        version: '1.0',
+        fecha_exportacion: new Date().toISOString(),
+        empleados,
+        vacaciones,
+        coberturas
+    };
+
+    const json = JSON.stringify(datos, null, 2);
+    const blob = new Blob([json], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement('a');
+    a.href = url;
+    const fechaArchivo = new Date().toISOString().split('T')[0];
+    a.download = `vacaciones_backup_${fechaArchivo}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    alert('Datos exportados correctamente');
+}
+
+function importarDatos() {
+    const inputFile = document.getElementById('inputImportar');
+    inputFile.click();
+}
+
+function procesarArchivoImportado(e) {
+    const archivo = e.target.files[0];
+    if (!archivo) return;
+
+    const lector = new FileReader();
+
+    lector.onload = function(evento) {
+        try {
+            const datos = JSON.parse(evento.target.result);
+
+            // Validar estructura básica
+            if (!datos.empleados || !Array.isArray(datos.empleados)) {
+                throw new Error('El archivo no contiene un array válido de empleados');
+            }
+
+            if (!datos.vacaciones || !Array.isArray(datos.vacaciones)) {
+                throw new Error('El archivo no contiene un array válido de vacaciones');
+            }
+
+            // Confirmar importación
+            const mensaje = `¿Está seguro de importar los datos?\n\nEsto reemplazará todos los datos actuales:\n- ${datos.empleados.length} empleados\n- ${datos.vacaciones.length} bloques de vacaciones\n- ${Object.keys(datos.coberturas || {}).length} coberturas`;
+
+            if (!confirm(mensaje)) {
+                // Limpiar el input
+                e.target.value = '';
+                return;
+            }
+
+            // Importar datos
+            empleados = datos.empleados;
+            vacaciones = datos.vacaciones;
+            coberturas = datos.coberturas || {};
+
+            // Guardar en localStorage
+            guardarEmpleados();
+            guardarVacaciones();
+            guardarCoberturas();
+
+            // Actualizar interfaz
+            renderizarListaEmpleados();
+            actualizarSelectEmpleados();
+            renderizarBloquesPendientes();
+
+            // Si hay un calendario visible, actualizarlo
+            if (document.querySelector('.calendarios-grid')) {
+                renderizarBloquesVacaciones();
+                renderizarCoberturasFinSemana();
+            }
+
+            alert('Datos importados correctamente');
+
+            // Limpiar el input
+            e.target.value = '';
+        } catch (error) {
+            alert(`Error al importar el archivo: ${error.message}`);
+            console.error('Error de importación:', error);
+            // Limpiar el input
+            e.target.value = '';
+        }
+    };
+
+    lector.onerror = function() {
+        alert('Error al leer el archivo');
+        // Limpiar el input
+        e.target.value = '';
+    };
+
+    lector.readAsText(archivo);
+}
+
+function inicializarImportExport() {
+    const btnExportar = document.getElementById('btnExportar');
+    const btnImportar = document.getElementById('btnImportar');
+    const inputImportar = document.getElementById('inputImportar');
+
+    btnExportar.addEventListener('click', exportarDatos);
+    btnImportar.addEventListener('click', importarDatos);
+    inputImportar.addEventListener('change', procesarArchivoImportado);
+}
+
+// ===========================
 // INICIALIZACIÓN
 // ===========================
 
@@ -1112,6 +1235,7 @@ document.addEventListener('DOMContentLoaded', () => {
     inicializarModuloEmpleados();
     inicializarModuloCalendario();
     inicializarModal();
+    inicializarImportExport();
     renderizarBloquesPendientes();
 });
 
