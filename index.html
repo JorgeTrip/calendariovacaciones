@@ -42,8 +42,20 @@
                         </div>
 
                         <div class="form-group">
-                            <label for="departamento">Departamento:</label>
-                            <input type="text" id="departamento">
+                            <label for="diasDisponibles">Días de vacaciones disponibles:</label>
+                            <input type="number" id="diasDisponibles" min="0" max="365" value="30" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Días laborales:</label>
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="trabajaSabado"> Trabaja sábados
+                                </label>
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="trabajaDomingo"> Trabaja domingos
+                                </label>
+                            </div>
                         </div>
 
                         <div class="form-group">
@@ -107,10 +119,14 @@
                         <select id="selectEmpleado">
                             <option value="">-- Seleccione un empleado --</option>
                         </select>
+                        <div id="diasRestantes" class="dias-restantes" style="display: none;">
+                            <span class="label">Días disponibles:</span>
+                            <span class="valor" id="diasRestantesValor">0</span>
+                        </div>
                     </div>
 
                     <div class="control-group">
-                        <label for="diasVacaciones">Días de vacaciones:</label>
+                        <label for="diasVacaciones">Días de vacaciones a asignar:</label>
                         <input type="number" id="diasVacaciones" min="1" max="365" value="15">
                     </div>
 
@@ -128,6 +144,12 @@
                 </div>
 
                 <div id="calendarioContainer" class="calendario-container"></div>
+
+                <div class="cobertura-fines-semana" id="coberturaFinesSemana" style="display: none;">
+                    <h3>Cobertura de Fines de Semana</h3>
+                    <p class="info-message">Asigna quién cubrirá los fines de semana cuando los empleados estén de vacaciones</p>
+                    <div id="listaCoberturas"></div>
+                </div>
             </section>
         </main>
 
@@ -143,8 +165,18 @@
                 </div>
 
                 <div class="form-group">
+                    <label for="modalFechaInicio">Fecha de inicio:</label>
+                    <input type="date" id="modalFechaInicio">
+                </div>
+
+                <div class="form-group">
                     <label for="modalDias">Días de vacaciones:</label>
                     <input type="number" id="modalDias" min="1" max="365" value="15">
+                </div>
+
+                <div id="modalFinesSemana" class="info-vacaciones" style="display: none;">
+                    <p><strong>Fines de semana incluidos:</strong></p>
+                    <p id="modalFinesSemanaDetalle"></p>
                 </div>
 
                 <div class="form-actions">
