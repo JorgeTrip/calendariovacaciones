@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Vacaciones - Personal</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sistema de Gestión de Vacaciones</h1>
+            <nav>
+                <button id="btnEmpleados" class="nav-btn active">Empleados</button>
+                <button id="btnCalendario" class="nav-btn">Calendario</button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Módulo de Empleados -->
+            <section id="moduloEmpleados" class="module active">
+                <h2>Gestión de Empleados</h2>
+
+                <div class="form-container">
+                    <h3>Agregar/Editar Empleado</h3>
+                    <form id="formEmpleado">
+                        <input type="hidden" id="empleadoId">
+
+                        <div class="form-group">
+                            <label for="nombre">Nombre:</label>
+                            <input type="text" id="nombre" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="apellido">Apellido:</label>
+                            <input type="text" id="apellido" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="departamento">Departamento:</label>
+                            <input type="text" id="departamento">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="color">Color identificador:</label>
+                            <input type="color" id="color" value="#3498db">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">Guardar</button>
+                            <button type="button" id="btnCancelar" class="btn btn-secondary">Cancelar</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="empleados-lista">
+                    <h3>Lista de Empleados</h3>
+                    <div id="listaEmpleados"></div>
+                </div>
+            </section>
+
+            <!-- Módulo de Calendario -->
+            <section id="moduloCalendario" class="module">
+                <h2>Calendario de Vacaciones</h2>
+
+                <div class="calendar-controls">
+                    <div class="control-group">
+                        <label for="selectMeses">Seleccionar meses a visualizar:</label>
+                        <select id="selectMeses" multiple size="6">
+                            <option value="0">Enero</option>
+                            <option value="1">Febrero</option>
+                            <option value="2">Marzo</option>
+                            <option value="3">Abril</option>
+                            <option value="4">Mayo</option>
+                            <option value="5">Junio</option>
+                            <option value="6">Julio</option>
+                            <option value="7">Agosto</option>
+                            <option value="8">Septiembre</option>
+                            <option value="9">Octubre</option>
+                            <option value="10">Noviembre</option>
+                            <option value="11">Diciembre</option>
+                        </select>
+                        <small>Mantén Ctrl/Cmd para seleccionar múltiples meses</small>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="selectAnio">Año:</label>
+                        <select id="selectAnio"></select>
+                    </div>
+
+                    <button id="btnMostrarCalendario" class="btn btn-primary">Mostrar Calendario</button>
+                </div>
+
+                <div class="vacation-controls">
+                    <h3>Asignar Vacaciones</h3>
+
+                    <div class="control-group">
+                        <label for="selectEmpleado">Empleado:</label>
+                        <select id="selectEmpleado">
+                            <option value="">-- Seleccione un empleado --</option>
+                        </select>
+                    </div>
+
+                    <div class="control-group">
+                        <label for="diasVacaciones">Días de vacaciones:</label>
+                        <input type="number" id="diasVacaciones" min="1" max="365" value="15">
+                    </div>
+
+                    <button id="btnCrearBloque" class="btn btn-success">Crear Bloque de Vacaciones</button>
+                </div>
+
+                <div id="calendarioContainer" class="calendario-container"></div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
