@@ -117,9 +117,43 @@
                     <button id="btnCrearBloque" class="btn btn-success">Crear Bloque de Vacaciones</button>
                 </div>
 
+                <div class="bloques-pendientes" id="bloquesPendientes" style="display: none;">
+                    <h3>Bloques Creados (Pendientes de Insertar)</h3>
+                    <p class="info-message">Arrastra los bloques al calendario para asignar fechas</p>
+                    <div id="listaBloquesPendientes"></div>
+                </div>
+
+                <div class="info-box">
+                    <strong>💡 Instrucciones:</strong> Arrastra un bloque al calendario. La celda donde sueltes el mouse será el <strong>primer día</strong> de las vacaciones.
+                </div>
+
                 <div id="calendarioContainer" class="calendario-container"></div>
             </section>
         </main>
+
+        <!-- Modal para editar bloque -->
+        <div id="modalEditarBloque" class="modal">
+            <div class="modal-content">
+                <span class="modal-close">&times;</span>
+                <h3>Editar Bloque de Vacaciones</h3>
+
+                <div class="form-group">
+                    <label>Empleado:</label>
+                    <p id="modalEmpleadoNombre" class="modal-info"></p>
+                </div>
+
+                <div class="form-group">
+                    <label for="modalDias">Días de vacaciones:</label>
+                    <input type="number" id="modalDias" min="1" max="365" value="15">
+                </div>
+
+                <div class="form-actions">
+                    <button id="btnGuardarEdicion" class="btn btn-primary">Guardar Cambios</button>
+                    <button id="btnEliminarBloque" class="btn btn-danger">Eliminar Bloque</button>
+                    <button id="btnCancelarEdicion" class="btn btn-secondary">Cancelar</button>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script type="module" src="app.js"></script>

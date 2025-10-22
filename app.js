@@ -5,7 +5,7 @@
 let empleados = [];
 let vacaciones = [];
 let editandoEmpleadoId = null;
-let bloqueActual = null;
+let editandoVacacionId = null;
 
 // ===========================
 // UTILIDADES
@@ -94,6 +94,7 @@ function inicializarNavegacion() {
         moduloCalendario.classList.add('active');
         moduloEmpleados.classList.remove('active');
         actualizarSelectEmpleados();
+        renderizarBloquesPendientes();
     });
 }
 
@@ -389,8 +390,50 @@ function crearBloqueVacaciones() {
     vacaciones.push(vacacion);
     guardarVacaciones();
 
-    // Crear bloque visual temporal
-    crearBloqueVisual(vacacion, empleado, true);
+    // Actualizar lista de bloques pendientes
+    renderizarBloquesPendientes();
+
+    // Limpiar campo de días
+    document.getElementById('diasVacaciones').value = 15;
+}
+
+function renderizarBloquesPendientes() {
+    const bloquesPendientesDiv = document.getElementById('bloquesPendientes');
+    const lista = document.getElementById('listaBloquesPendientes');
+
+    // Filtrar vacaciones sin fecha de inicio (pendientes)
+    const pendientes = vacaciones.filter(v => !v.fechaInicio);
+
+    if (pendientes.length === 0) {
+        bloquesPendientesDiv.style.display = 'none';
+        return;
+    }
+
+    bloquesPendientesDiv.style.display = 'block';
+    lista.innerHTML = '';
+
+    pendientes.forEach(vacacion => {
+        const empleado = empleados.find(e => e.id === vacacion.empleadoId);
+        if (!empleado) return;
+
+        const bloqueVisual = crearBloqueVisual(vacacion, empleado, true);
+        lista.appendChild(bloqueVisual);
+    });
+}
+
+function eliminarVacacion(id) {
+    if (!confirm('¿Está seguro de eliminar este bloque de vacaciones?')) return;
+
+    vacaciones = vacaciones.filter(v => v.id !== id);
+    guardarVacaciones();
+
+    // Actualizar visualización
+    renderizarBloquesPendientes();
+    if (document.querySelector('.calendarios-grid')) {
+        renderizarBloquesVacaciones();
+    }
+
+    cerrarModal();
 }
 
 function crearBloqueVisual(vacacion, empleado, esNuevo = false) {
@@ -405,19 +448,49 @@ function crearBloqueVisual(vacacion, empleado, esNuevo = false) {
     bloque.addEventListener('dragstart', manejarDragStart);
     bloque.addEventListener('dragend', manejarDragEnd);
 
+    // Agregar evento de clic para editar (solo si no está en la lista de pendientes)
+    if (!esNuevo) {
+        bloque.addEventListener('click', (e) => {
+            e.stopPropagation();
+            abrirModalEdicion(vacacion.id);
+        });
+    }
+
     if (esNuevo) {
-        // Posicionar temporalmente en la parte superior del contenedor
-        const container = document.getElementById('calendarioContainer');
-        bloque.style.position = 'relative';
-        bloque.style.marginBottom = '20px';
+        // Crear bloque para lista de pendientes
         bloque.style.width = 'fit-content';
-        container.insertBefore(bloque, container.firstChild);
+        bloque.style.display = 'inline-flex';
+        bloque.style.padding = '8px 12px';
+        return bloque;
     } else if (vacacion.fechaInicio) {
         // Posicionar en el calendario según la fecha de inicio
         posicionarBloqueEnCalendario(bloque, vacacion);
     }
 
     return bloque;
+}
+
+function calcularBloquesPorDia(fechaInicio, dias) {
+    // Calcular todos los días que ocupa este bloque
+    const fechasOcupadas = [];
+    const fecha = new Date(fechaInicio);
+
+    for (let i = 0; i < dias; i++) {
+        const fechaStr = `${fecha.getFullYear()}-${(fecha.getMonth() + 1).toString().padStart(2, '0')}-${fecha.getDate().toString().padStart(2, '0')}`;
+        fechasOcupadas.push(fechaStr);
+        fecha.setDate(fecha.getDate() + 1);
+    }
+
+    return fechasOcupadas;
+}
+
+function obtenerBloquesPorFecha(fecha, vacacionIdExcluir = null) {
+    // Obtener todas las vacaciones que ocupan esta fecha
+    return vacaciones.filter(v => {
+        if (!v.fechaInicio || v.id === vacacionIdExcluir) return false;
+        const fechasOcupadas = calcularBloquesPorDia(v.fechaInicio, v.dias);
+        return fechasOcupadas.includes(fecha);
+    });
 }
 
 function posicionarBloqueEnCalendario(bloqueOriginal, vacacion) {
@@ -438,8 +511,24 @@ function posicionarBloqueEnCalendario(bloqueOriginal, vacacion) {
     const celdaRect = celdaInicio.getBoundingClientRect();
     const alturaCelda = celdaRect.height;
 
-    // Calcular cuántos días quedan en la primera semana
-    const columnaInicio = indiceCeldaInicio % 7;
+    // Calcular cuántos bloques máximo hay en algún día del rango
+    const fechasOcupadas = calcularBloquesPorDia(vacacion.fechaInicio, vacacion.dias);
+    let maxBloquesPorDia = 1;
+    let posicionEnDia = 0;
+
+    fechasOcupadas.forEach(fecha => {
+        const bloquesEnFecha = obtenerBloquesPorFecha(fecha, vacacion.id);
+        maxBloquesPorDia = Math.max(maxBloquesPorDia, bloquesEnFecha.length + 1);
+    });
+
+    // Determinar posición vertical de este bloque
+    const bloquesPrimeraFecha = obtenerBloquesPorFecha(fechasOcupadas[0], vacacion.id);
+    posicionEnDia = bloquesPrimeraFecha.length;
+
+    // Calcular altura del bloque (dividida entre bloques superpuestos)
+    const alturaBloque = (alturaCelda - 10) / maxBloquesPorDia;
+    const offsetVertical = posicionEnDia * alturaBloque;
+
     let diasRestantes = vacacion.dias;
     let indiceCeldaActual = indiceCeldaInicio;
     let filaActual = Math.floor(indiceCeldaInicio / 7);
@@ -456,14 +545,18 @@ function posicionarBloqueEnCalendario(bloqueOriginal, vacacion) {
         // Posicionar el bloque
         bloqueSegmento.style.position = 'absolute';
         bloqueSegmento.style.left = `${columnaActual * (100 / 7)}%`;
-        bloqueSegmento.style.top = `${filaActual * (alturaCelda + 5)}px`;
+        bloqueSegmento.style.top = `${filaActual * (alturaCelda + 5) + offsetVertical}px`;
         bloqueSegmento.style.width = `calc(${diasEnEstaFila * (100 / 7)}% - 5px)`;
-        bloqueSegmento.style.height = `${alturaCelda - 10}px`;
+        bloqueSegmento.style.height = `${alturaBloque}px`;
 
-        // Hacer el bloque arrastrable
+        // Hacer el bloque arrastrable y clickeable
         bloqueSegmento.draggable = true;
         bloqueSegmento.addEventListener('dragstart', manejarDragStart);
         bloqueSegmento.addEventListener('dragend', manejarDragEnd);
+        bloqueSegmento.addEventListener('click', (e) => {
+            e.stopPropagation();
+            abrirModalEdicion(vacacion.id);
+        });
 
         diasGrid.appendChild(bloqueSegmento);
 
@@ -479,7 +572,7 @@ function posicionarBloqueEnCalendario(bloqueOriginal, vacacion) {
     }
 
     // Remover el bloque original ya que creamos los segmentos
-    if (bloqueOriginal.parentElement) {
+    if (bloqueOriginal.parentElement && bloqueOriginal.classList.contains('bloque-temporal')) {
         bloqueOriginal.remove();
     }
 }
@@ -496,6 +589,83 @@ function renderizarBloquesVacaciones() {
         if (!empleado) return;
 
         crearBloqueVisual(vacacion, empleado, false);
+    });
+}
+
+// ===========================
+// MODAL DE EDICIÓN
+// ===========================
+
+function abrirModalEdicion(vacacionId) {
+    const vacacion = vacaciones.find(v => v.id === vacacionId);
+    if (!vacacion) return;
+
+    const empleado = empleados.find(e => e.id === vacacion.empleadoId);
+    if (!empleado) return;
+
+    editandoVacacionId = vacacionId;
+
+    // Actualizar contenido del modal
+    document.getElementById('modalEmpleadoNombre').textContent = obtenerNombreCompleto(empleado);
+    document.getElementById('modalDias').value = vacacion.dias;
+
+    // Mostrar modal
+    const modal = document.getElementById('modalEditarBloque');
+    modal.classList.add('show');
+}
+
+function cerrarModal() {
+    const modal = document.getElementById('modalEditarBloque');
+    modal.classList.remove('show');
+    editandoVacacionId = null;
+}
+
+function guardarEdicionBloque() {
+    if (!editandoVacacionId) return;
+
+    const vacacion = vacaciones.find(v => v.id === editandoVacacionId);
+    if (!vacacion) return;
+
+    const nuevosDias = parseInt(document.getElementById('modalDias').value);
+
+    if (!nuevosDias || nuevosDias < 1) {
+        alert('Por favor, ingrese una cantidad válida de días');
+        return;
+    }
+
+    vacacion.dias = nuevosDias;
+    guardarVacaciones();
+
+    // Actualizar visualización
+    renderizarBloquesPendientes();
+    if (document.querySelector('.calendarios-grid')) {
+        renderizarBloquesVacaciones();
+    }
+
+    cerrarModal();
+}
+
+function inicializarModal() {
+    const modal = document.getElementById('modalEditarBloque');
+    const btnCerrar = modal.querySelector('.modal-close');
+    const btnGuardar = document.getElementById('btnGuardarEdicion');
+    const btnEliminar = document.getElementById('btnEliminarBloque');
+    const btnCancelar = document.getElementById('btnCancelarEdicion');
+
+    btnCerrar.addEventListener('click', cerrarModal);
+    btnCancelar.addEventListener('click', cerrarModal);
+    btnGuardar.addEventListener('click', guardarEdicionBloque);
+    btnEliminar.addEventListener('click', () => {
+        if (editandoVacacionId) {
+            eliminarVacacion(editandoVacacionId);
+        }
+    });
+
+    // Cerrar al hacer clic fuera del modal
+    modal.addEventListener('click', (e) => {
+        if (e.target === modal) {
+            cerrarModal();
+        }
     });
 }
 
@@ -547,9 +717,12 @@ function manejarDrop(e) {
     if (e.stopPropagation) {
         e.stopPropagation();
     }
+    if (e.preventDefault) {
+        e.preventDefault();
+    }
 
     const celdaDestino = e.target.closest('.dia-cell');
-    if (!celdaDestino || !draggedVacacion) return;
+    if (!celdaDestino || !draggedVacacion) return false;
 
     const fechaDestino = celdaDestino.dataset.fecha;
 
@@ -557,16 +730,15 @@ function manejarDrop(e) {
     draggedVacacion.fechaInicio = fechaDestino;
     guardarVacaciones();
 
-    // Remover el bloque anterior
-    if (draggedElement) {
-        draggedElement.remove();
-    }
+    // Eliminar TODOS los segmentos visuales de este bloque (para evitar duplicados)
+    document.querySelectorAll(`.bloque-vacaciones[data-vacacion-id="${draggedVacacion.id}"]`).forEach(b => b.remove());
 
-    // Recrear el bloque en la nueva posición
-    const empleado = empleados.find(e => e.id === draggedVacacion.empleadoId);
-    if (empleado) {
-        crearBloqueVisual(draggedVacacion, empleado, false);
-    }
+    // Actualizar visualización completa
+    renderizarBloquesPendientes();
+    renderizarBloquesVacaciones();
+
+    draggedElement = null;
+    draggedVacacion = null;
 
     return false;
 }
@@ -581,6 +753,8 @@ document.addEventListener('DOMContentLoaded', () => {
     inicializarNavegacion();
     inicializarModuloEmpleados();
     inicializarModuloCalendario();
+    inicializarModal();
+    renderizarBloquesPendientes();
 });
 
 // Hacer funciones globales para los botones inline
