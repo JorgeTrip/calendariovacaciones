@@ -1,0 +1,437 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    min-height: 100vh;
+    padding: 20px;
+}
+
+.container {
+    max-width: 1400px;
+    margin: 0 auto;
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+    overflow: hidden;
+}
+
+header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 30px;
+}
+
+header h1 {
+    margin-bottom: 20px;
+    font-size: 2rem;
+}
+
+nav {
+    display: flex;
+    gap: 10px;
+}
+
+.nav-btn {
+    padding: 10px 20px;
+    background: rgba(255, 255, 255, 0.2);
+    border: 2px solid transparent;
+    color: white;
+    cursor: pointer;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+.nav-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.nav-btn.active {
+    background: white;
+    color: #667eea;
+    border-color: white;
+}
+
+main {
+    padding: 30px;
+}
+
+.module {
+    display: none;
+}
+
+.module.active {
+    display: block;
+}
+
+.module h2 {
+    color: #667eea;
+    margin-bottom: 30px;
+    font-size: 1.8rem;
+}
+
+.module h3 {
+    color: #333;
+    margin-bottom: 20px;
+    font-size: 1.3rem;
+}
+
+/* Formulario de Empleados */
+.form-container {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+    font-weight: 500;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select:not([multiple]) {
+    width: 100%;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+    transition: border-color 0.3s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus {
+    outline: none;
+    border-color: #667eea;
+}
+
+.form-group input[type="color"] {
+    width: 100px;
+    height: 40px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.3s;
+}
+
+.btn-primary {
+    background: #667eea;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #5568d3;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: #5a6268;
+}
+
+.btn-success {
+    background: #28a745;
+    color: white;
+}
+
+.btn-success:hover {
+    background: #218838;
+}
+
+.btn-danger {
+    background: #dc3545;
+    color: white;
+    padding: 8px 15px;
+    font-size: 0.9rem;
+}
+
+.btn-danger:hover {
+    background: #c82333;
+}
+
+.btn-edit {
+    background: #ffc107;
+    color: #333;
+    padding: 8px 15px;
+    font-size: 0.9rem;
+}
+
+.btn-edit:hover {
+    background: #e0a800;
+}
+
+/* Lista de Empleados */
+.empleados-lista {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 8px;
+}
+
+#listaEmpleados {
+    display: grid;
+    gap: 15px;
+}
+
+.empleado-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    border-left: 5px solid #667eea;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s;
+}
+
+.empleado-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+}
+
+.empleado-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.empleado-color {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid #ddd;
+}
+
+.empleado-datos h4 {
+    color: #333;
+    margin-bottom: 5px;
+}
+
+.empleado-datos p {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.empleado-acciones {
+    display: flex;
+    gap: 10px;
+}
+
+/* Controles del Calendario */
+.calendar-controls,
+.vacation-controls {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+}
+
+.control-group {
+    margin-bottom: 20px;
+}
+
+.control-group label {
+    display: block;
+    margin-bottom: 5px;
+    color: #555;
+    font-weight: 500;
+}
+
+.control-group select[multiple] {
+    width: 100%;
+    max-width: 400px;
+    padding: 10px;
+    border: 2px solid #ddd;
+    border-radius: 5px;
+    font-size: 1rem;
+}
+
+.control-group small {
+    color: #666;
+    font-style: italic;
+}
+
+/* Calendario */
+.calendario-container {
+    background: #f8f9fa;
+    padding: 25px;
+    border-radius: 8px;
+    min-height: 400px;
+}
+
+.calendarios-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 30px;
+}
+
+.mes-calendario {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.mes-header {
+    text-align: center;
+    margin-bottom: 15px;
+    color: #667eea;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.dias-semana {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    margin-bottom: 10px;
+}
+
+.dia-semana {
+    text-align: center;
+    font-weight: bold;
+    color: #666;
+    padding: 8px;
+    font-size: 0.9rem;
+}
+
+.dias-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    position: relative;
+}
+
+.dia-cell {
+    aspect-ratio: 1;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 5px;
+    font-size: 0.85rem;
+    background: white;
+    position: relative;
+    min-height: 50px;
+}
+
+.dia-cell.otro-mes {
+    color: #ccc;
+    background: #f9f9f9;
+}
+
+.dia-cell.hoy {
+    background: #fff3cd;
+    font-weight: bold;
+}
+
+.dia-cell:hover {
+    background: #f0f0f0;
+}
+
+/* Bloques de Vacaciones */
+.bloque-vacaciones {
+    position: absolute;
+    padding: 8px;
+    border-radius: 6px;
+    color: white;
+    font-size: 0.8rem;
+    font-weight: bold;
+    cursor: move;
+    user-select: none;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    z-index: 10;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: opacity 0.2s, transform 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 30px;
+}
+
+.bloque-vacaciones:hover {
+    opacity: 0.9;
+    transform: scale(1.02);
+    z-index: 100;
+}
+
+.bloque-vacaciones.dragging {
+    opacity: 0.6;
+    z-index: 1000;
+}
+
+.bloque-temporal {
+    opacity: 0.7;
+    border: 2px dashed white;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .calendarios-grid {
+        grid-template-columns: 1fr;
+    }
+
+    header h1 {
+        font-size: 1.5rem;
+    }
+
+    nav {
+        flex-direction: column;
+    }
+
+    .nav-btn {
+        width: 100%;
+    }
+
+    .empleado-card {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .empleado-acciones {
+        width: 100%;
+        justify-content: flex-end;
+    }
+}
+
+/* Mensaje vacío */
+.empty-message {
+    text-align: center;
+    color: #999;
+    padding: 40px;
+    font-size: 1.1rem;
+}
