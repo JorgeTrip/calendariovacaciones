@@ -347,16 +347,23 @@ function mostrarDiasRestantes() {
     const select = document.getElementById('selectEmpleado');
     const diasRestantesDiv = document.getElementById('diasRestantes');
     const diasRestantesValor = document.getElementById('diasRestantesValor');
+    const inputDiasVacaciones = document.getElementById('diasVacaciones');
 
     const empleadoId = select.value;
 
     if (!empleadoId) {
         diasRestantesDiv.style.display = 'none';
+        inputDiasVacaciones.value = 15;
+        renderizarBloquesPendientes();
         return;
     }
 
     const diasRestantes = calcularDiasRestantes(empleadoId);
     diasRestantesValor.textContent = diasRestantes;
+
+    // Actualizar el campo de días con los días disponibles
+    inputDiasVacaciones.value = Math.max(1, diasRestantes);
+    inputDiasVacaciones.max = diasRestantes;
 
     // Aplicar clases de advertencia
     diasRestantesDiv.classList.remove('warning', 'danger');
@@ -367,6 +374,9 @@ function mostrarDiasRestantes() {
     }
 
     diasRestantesDiv.style.display = 'block';
+
+    // Mostrar bloques pendientes de este empleado
+    renderizarBloquesPendientes(empleadoId);
 }
 
 function mostrarCalendario() {
@@ -507,12 +517,17 @@ function crearBloqueVacaciones() {
     document.getElementById('diasVacaciones').value = 15;
 }
 
-function renderizarBloquesPendientes() {
+function renderizarBloquesPendientes(empleadoIdFiltro = null) {
     const bloquesPendientesDiv = document.getElementById('bloquesPendientes');
     const lista = document.getElementById('listaBloquesPendientes');
 
     // Filtrar vacaciones sin fecha de inicio (pendientes)
-    const pendientes = vacaciones.filter(v => !v.fechaInicio);
+    let pendientes = vacaciones.filter(v => !v.fechaInicio);
+
+    // Si hay filtro de empleado, aplicarlo
+    if (empleadoIdFiltro) {
+        pendientes = pendientes.filter(v => v.empleadoId === empleadoIdFiltro);
+    }
 
     if (pendientes.length === 0) {
         bloquesPendientesDiv.style.display = 'none';
@@ -526,9 +541,61 @@ function renderizarBloquesPendientes() {
         const empleado = empleados.find(e => e.id === vacacion.empleadoId);
         if (!empleado) return;
 
-        const bloqueVisual = crearBloqueVisual(vacacion, empleado, true);
-        lista.appendChild(bloqueVisual);
+        const bloqueContainer = crearBloqueControles(vacacion, empleado);
+        lista.appendChild(bloqueContainer);
     });
+}
+
+function crearBloqueControles(vacacion, empleado) {
+    const container = document.createElement('div');
+    container.className = 'bloque-pendiente-container';
+    container.dataset.vacacionId = vacacion.id;
+
+    const bloqueVisual = crearBloqueVisual(vacacion, empleado, true);
+
+    // Crear icono de borrar
+    const btnEliminar = document.createElement('button');
+    btnEliminar.className = 'btn-eliminar-bloque';
+    btnEliminar.innerHTML = '🗑️';
+    btnEliminar.title = 'Eliminar bloque';
+    btnEliminar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        eliminarVacacionRapido(vacacion.id);
+    });
+
+    // Al hacer clic en el bloque (no en el botón), abrir modal
+    bloqueVisual.addEventListener('click', (e) => {
+        e.stopPropagation();
+        abrirModalEdicion(vacacion.id);
+    });
+
+    container.appendChild(bloqueVisual);
+    container.appendChild(btnEliminar);
+
+    return container;
+}
+
+function eliminarVacacionRapido(id) {
+    if (!confirm('¿Está seguro de eliminar este bloque de vacaciones?')) return;
+
+    vacaciones = vacaciones.filter(v => v.id !== id);
+    guardarVacaciones();
+
+    // Actualizar visualización y días restantes
+    const selectEmpleado = document.getElementById('selectEmpleado');
+    const empleadoId = selectEmpleado.value;
+
+    if (empleadoId) {
+        renderizarBloquesPendientes(empleadoId);
+        mostrarDiasRestantes();
+    } else {
+        renderizarBloquesPendientes();
+    }
+
+    if (document.querySelector('.calendarios-grid')) {
+        renderizarBloquesVacaciones();
+        renderizarCoberturasFinSemana();
+    }
 }
 
 function eliminarVacacion(id) {
@@ -538,9 +605,19 @@ function eliminarVacacion(id) {
     guardarVacaciones();
 
     // Actualizar visualización
-    renderizarBloquesPendientes();
+    const selectEmpleado = document.getElementById('selectEmpleado');
+    const empleadoId = selectEmpleado.value;
+
+    if (empleadoId) {
+        renderizarBloquesPendientes(empleadoId);
+        mostrarDiasRestantes();
+    } else {
+        renderizarBloquesPendientes();
+    }
+
     if (document.querySelector('.calendarios-grid')) {
         renderizarBloquesVacaciones();
+        renderizarCoberturasFinSemana();
     }
 
     cerrarModal();
@@ -571,6 +648,7 @@ function crearBloqueVisual(vacacion, empleado, esNuevo = false) {
         bloque.style.width = 'fit-content';
         bloque.style.display = 'inline-flex';
         bloque.style.padding = '8px 12px';
+        bloque.style.cursor = 'pointer';
         return bloque;
     } else if (vacacion.fechaInicio) {
         // Posicionar en el calendario según la fecha de inicio
@@ -867,27 +945,41 @@ function manejarDrop(e) {
         e.preventDefault();
     }
 
-    // Intentar encontrar la celda destino, ya sea directamente o a través de un bloque
-    let celdaDestino = e.target.closest('.dia-cell');
+    let celdaDestino = null;
 
-    // Si no encontramos celda, podría ser que soltamos sobre un bloque
+    // Método 1: Intentar obtener directamente la celda
+    celdaDestino = e.target.closest('.dia-cell');
+
+    // Método 2: Si soltamos sobre un bloque, buscar la celda debajo
     if (!celdaDestino) {
         const bloqueDestino = e.target.closest('.bloque-vacaciones');
         if (bloqueDestino) {
-            // Encontrar la celda padre del bloque
-            const diasGrid = bloqueDestino.parentElement;
-            if (diasGrid && diasGrid.classList.contains('dias-grid')) {
-                // Obtener todas las celdas y encontrar la que está debajo del mouse
-                const rect = bloqueDestino.getBoundingClientRect();
-                const punto = document.elementFromPoint(e.clientX, e.clientY);
-                celdaDestino = punto ? punto.closest('.dia-cell') : null;
+            // Ocultar temporalmente el bloque arrastrado para poder ver qué hay debajo
+            if (draggedElement) {
+                draggedElement.style.visibility = 'hidden';
+            }
 
-                // Si aún no encontramos, usar la posición del bloque para deducir la celda
-                if (!celdaDestino) {
-                    const bloqueVacacionOriginal = vacaciones.find(v => v.id === bloqueDestino.dataset.vacacionId);
-                    if (bloqueVacacionOriginal && bloqueVacacionOriginal.fechaInicio) {
-                        const celdaConFecha = diasGrid.querySelector(`[data-fecha="${bloqueVacacionOriginal.fechaInicio}"]`);
-                        celdaDestino = celdaConFecha;
+            // Obtener el elemento en la posición del mouse
+            const elementoDebajo = document.elementFromPoint(e.clientX, e.clientY);
+
+            // Restaurar visibilidad
+            if (draggedElement) {
+                draggedElement.style.visibility = 'visible';
+            }
+
+            // Intentar encontrar la celda
+            if (elementoDebajo) {
+                celdaDestino = elementoDebajo.closest('.dia-cell');
+            }
+
+            // Si aún no hay celda, buscar en el grid padre del bloque
+            if (!celdaDestino) {
+                const diasGrid = bloqueDestino.parentElement;
+                if (diasGrid && diasGrid.classList.contains('dias-grid')) {
+                    // Usar la fecha de inicio del bloque sobre el que soltamos
+                    const bloqueVacacionDestino = vacaciones.find(v => v.id === bloqueDestino.dataset.vacacionId);
+                    if (bloqueVacacionDestino && bloqueVacacionDestino.fechaInicio) {
+                        celdaDestino = diasGrid.querySelector(`[data-fecha="${bloqueVacacionDestino.fechaInicio}"]`);
                     }
                 }
             }
@@ -907,7 +999,16 @@ function manejarDrop(e) {
     document.querySelectorAll(`.bloque-vacaciones[data-vacacion-id="${draggedVacacion.id}"]`).forEach(b => b.remove());
 
     // Actualizar visualización completa
-    renderizarBloquesPendientes();
+    const selectEmpleado = document.getElementById('selectEmpleado');
+    const empleadoId = selectEmpleado.value;
+
+    if (empleadoId) {
+        renderizarBloquesPendientes(empleadoId);
+        mostrarDiasRestantes();
+    } else {
+        renderizarBloquesPendientes();
+    }
+
     renderizarBloquesVacaciones();
     renderizarCoberturasFinSemana();
 
