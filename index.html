@@ -9,7 +9,12 @@
 <body>
     <div class="container">
         <header>
-            <h1>Sistema de Gestión de Vacaciones</h1>
+            <div class="header-content">
+                <h1>Sistema de Gestión de Vacaciones</h1>
+                <button id="btnModoOscuro" class="btn-theme" title="Alternar modo oscuro">
+                    <span class="icon-theme">🌙</span>
+                </button>
+            </div>
             <nav>
                 <button id="btnEmpleados" class="nav-btn active">Empleados</button>
                 <button id="btnCalendario" class="nav-btn">Calendario</button>
@@ -43,7 +48,11 @@
 
                         <div class="form-group">
                             <label for="color">Color identificador:</label>
-                            <input type="color" id="color" value="#3498db">
+                            <div class="color-picker-container">
+                                <input type="color" id="color" value="#3498db">
+                                <div class="color-preview" id="colorPreview"></div>
+                                <span class="color-value" id="colorValue">#3498db</span>
+                            </div>
                         </div>
 
                         <div class="form-actions">
@@ -65,22 +74,21 @@
 
                 <div class="calendar-controls">
                     <div class="control-group">
-                        <label for="selectMeses">Seleccionar meses a visualizar:</label>
-                        <select id="selectMeses" multiple size="6">
-                            <option value="0">Enero</option>
-                            <option value="1">Febrero</option>
-                            <option value="2">Marzo</option>
-                            <option value="3">Abril</option>
-                            <option value="4">Mayo</option>
-                            <option value="5">Junio</option>
-                            <option value="6">Julio</option>
-                            <option value="7">Agosto</option>
-                            <option value="8">Septiembre</option>
-                            <option value="9">Octubre</option>
-                            <option value="10">Noviembre</option>
-                            <option value="11">Diciembre</option>
-                        </select>
-                        <small>Mantén Ctrl/Cmd para seleccionar múltiples meses</small>
+                        <label>Seleccionar meses a visualizar:</label>
+                        <div class="meses-checkboxes" id="mesesCheckboxes">
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="0"> Enero</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="1"> Febrero</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="2"> Marzo</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="3"> Abril</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="4"> Mayo</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="5"> Junio</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="6"> Julio</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="7"> Agosto</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="8"> Septiembre</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="9"> Octubre</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="10"> Noviembre</label>
+                            <label class="checkbox-label"><input type="checkbox" name="mes" value="11"> Diciembre</label>
+                        </div>
                     </div>
 
                     <div class="control-group">
