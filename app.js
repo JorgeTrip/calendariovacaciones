@@ -33,6 +33,13 @@ function cargarDatos() {
     if (vacacionesGuardadas) {
         vacaciones = JSON.parse(vacacionesGuardadas);
     }
+
+    // Cargar preferencia de modo oscuro
+    const modoOscuro = localStorage.getItem('modoOscuro');
+    if (modoOscuro === 'true') {
+        document.body.classList.add('dark-mode');
+        actualizarIconoTema();
+    }
 }
 
 function guardarEmpleados() {
@@ -41,6 +48,27 @@ function guardarEmpleados() {
 
 function guardarVacaciones() {
     localStorage.setItem('vacaciones', JSON.stringify(vacaciones));
+}
+
+// ===========================
+// MODO OSCURO
+// ===========================
+
+function inicializarModoOscuro() {
+    const btnModoOscuro = document.getElementById('btnModoOscuro');
+
+    btnModoOscuro.addEventListener('click', () => {
+        document.body.classList.toggle('dark-mode');
+        const esModoOscuro = document.body.classList.contains('dark-mode');
+        localStorage.setItem('modoOscuro', esModoOscuro);
+        actualizarIconoTema();
+    });
+}
+
+function actualizarIconoTema() {
+    const iconoTema = document.querySelector('.icon-theme');
+    const esModoOscuro = document.body.classList.contains('dark-mode');
+    iconoTema.textContent = esModoOscuro ? '☀️' : '🌙';
 }
 
 // ===========================
@@ -76,6 +104,20 @@ function inicializarNavegacion() {
 function inicializarModuloEmpleados() {
     const form = document.getElementById('formEmpleado');
     const btnCancelar = document.getElementById('btnCancelar');
+    const inputColor = document.getElementById('color');
+    const colorPreview = document.getElementById('colorPreview');
+    const colorValue = document.getElementById('colorValue');
+
+    // Actualizar previsualización de color
+    inputColor.addEventListener('input', (e) => {
+        const color = e.target.value;
+        colorPreview.style.background = color;
+        colorValue.textContent = color.toUpperCase();
+    });
+
+    // Inicializar previsualización
+    colorPreview.style.background = inputColor.value;
+    colorValue.textContent = inputColor.value.toUpperCase();
 
     form.addEventListener('submit', (e) => {
         e.preventDefault();
@@ -132,6 +174,10 @@ function editarEmpleado(id) {
     document.getElementById('departamento').value = empleado.departamento;
     document.getElementById('color').value = empleado.color;
 
+    // Actualizar previsualización de color
+    document.getElementById('colorPreview').style.background = empleado.color;
+    document.getElementById('colorValue').textContent = empleado.color.toUpperCase();
+
     editandoEmpleadoId = id;
 
     // Scroll al formulario
@@ -154,7 +200,10 @@ function eliminarEmpleado(id) {
 function limpiarFormulario() {
     document.getElementById('formEmpleado').reset();
     document.getElementById('empleadoId').value = '';
-    document.getElementById('color').value = '#3498db';
+    const colorInicial = '#3498db';
+    document.getElementById('color').value = colorInicial;
+    document.getElementById('colorPreview').style.background = colorInicial;
+    document.getElementById('colorValue').textContent = colorInicial.toUpperCase();
     editandoEmpleadoId = null;
 }
 
@@ -219,11 +268,11 @@ function actualizarSelectEmpleados() {
 }
 
 function mostrarCalendario() {
-    const selectMeses = document.getElementById('selectMeses');
+    const checkboxesMeses = document.querySelectorAll('input[name="mes"]:checked');
     const selectAnio = document.getElementById('selectAnio');
     const container = document.getElementById('calendarioContainer');
 
-    const mesesSeleccionados = Array.from(selectMeses.selectedOptions).map(opt => parseInt(opt.value));
+    const mesesSeleccionados = Array.from(checkboxesMeses).map(cb => parseInt(cb.value));
     const anio = parseInt(selectAnio.value);
 
     if (mesesSeleccionados.length === 0) {
@@ -371,8 +420,7 @@ function crearBloqueVisual(vacacion, empleado, esNuevo = false) {
     return bloque;
 }
 
-function posicionarBloqueEnCalendario(bloque, vacacion) {
-    const fechaInicio = new Date(vacacion.fechaInicio);
+function posicionarBloqueEnCalendario(bloqueOriginal, vacacion) {
     const fechaStr = vacacion.fechaInicio;
 
     // Buscar la celda de inicio
@@ -386,27 +434,59 @@ function posicionarBloqueEnCalendario(bloque, vacacion) {
 
     if (indiceCeldaInicio === -1) return;
 
-    // Calcular posición
-    const fila = Math.floor(indiceCeldaInicio / 7);
-    const columna = indiceCeldaInicio % 7;
-    const ancho = Math.min(vacacion.dias, 7 - columna);
-
-    // Posicionar el bloque
+    // Obtener dimensiones de celda
     const celdaRect = celdaInicio.getBoundingClientRect();
-    const gridRect = diasGrid.getBoundingClientRect();
+    const alturaCelda = celdaRect.height;
 
-    bloque.style.position = 'absolute';
-    bloque.style.left = `${columna * (100 / 7)}%`;
-    bloque.style.top = `${fila * (celdaRect.height + 5)}px`;
-    bloque.style.width = `calc(${ancho * (100 / 7)}% - 5px)`;
-    bloque.style.height = `${celdaRect.height - 10}px`;
+    // Calcular cuántos días quedan en la primera semana
+    const columnaInicio = indiceCeldaInicio % 7;
+    let diasRestantes = vacacion.dias;
+    let indiceCeldaActual = indiceCeldaInicio;
+    let filaActual = Math.floor(indiceCeldaInicio / 7);
 
-    diasGrid.appendChild(bloque);
+    // Crear bloques para cada fila que necesite el período de vacaciones
+    while (diasRestantes > 0 && indiceCeldaActual < todasLasCeldas.length) {
+        const columnaActual = indiceCeldaActual % 7;
+        const diasEnEstaFila = Math.min(diasRestantes, 7 - columnaActual);
+
+        // Crear un bloque para esta fila
+        const bloqueSegmento = bloqueOriginal.cloneNode(true);
+        bloqueSegmento.dataset.vacacionId = vacacion.id;
+
+        // Posicionar el bloque
+        bloqueSegmento.style.position = 'absolute';
+        bloqueSegmento.style.left = `${columnaActual * (100 / 7)}%`;
+        bloqueSegmento.style.top = `${filaActual * (alturaCelda + 5)}px`;
+        bloqueSegmento.style.width = `calc(${diasEnEstaFila * (100 / 7)}% - 5px)`;
+        bloqueSegmento.style.height = `${alturaCelda - 10}px`;
+
+        // Hacer el bloque arrastrable
+        bloqueSegmento.draggable = true;
+        bloqueSegmento.addEventListener('dragstart', manejarDragStart);
+        bloqueSegmento.addEventListener('dragend', manejarDragEnd);
+
+        diasGrid.appendChild(bloqueSegmento);
+
+        // Actualizar para la siguiente fila
+        diasRestantes -= diasEnEstaFila;
+        indiceCeldaActual += diasEnEstaFila;
+
+        // Si llegamos al final de la semana, pasar a la siguiente fila
+        if (indiceCeldaActual % 7 !== 0 && diasRestantes > 0) {
+            indiceCeldaActual = Math.ceil(indiceCeldaActual / 7) * 7;
+        }
+        filaActual = Math.floor(indiceCeldaActual / 7);
+    }
+
+    // Remover el bloque original ya que creamos los segmentos
+    if (bloqueOriginal.parentElement) {
+        bloqueOriginal.remove();
+    }
 }
 
 function renderizarBloquesVacaciones() {
-    // Limpiar bloques temporales
-    document.querySelectorAll('.bloque-temporal').forEach(b => b.remove());
+    // Limpiar todos los bloques de vacaciones existentes
+    document.querySelectorAll('.bloque-vacaciones').forEach(b => b.remove());
 
     // Renderizar bloques guardados
     vacaciones.forEach(vacacion => {
@@ -497,6 +577,7 @@ function manejarDrop(e) {
 
 document.addEventListener('DOMContentLoaded', () => {
     cargarDatos();
+    inicializarModoOscuro();
     inicializarNavegacion();
     inicializarModuloEmpleados();
     inicializarModuloCalendario();
